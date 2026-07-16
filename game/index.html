@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tiny Swords</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Main Menu -->
+    <div id="menu-screen" class="screen active">
+      <div class="menu-bg"></div>
+      <div class="menu-content">
+        <h1 class="game-title">Tiny Swords</h1>
+        <p class="game-subtitle">Formation General · Limited Keys · Tactical Orders</p>
+        <div class="menu-stats">
+          <span id="clear-count-display">Cleared 0 times</span>
+        </div>
+        <div class="level-grid" id="level-grid"></div>
+        <div class="menu-hint">
+          <p>← → Move · ↑ Rotate · 8 Keys/Fall · Charge · Orders · Morale · Shop · Buildings</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+      <div class="game-hud">
+        <div class="hud-left">
+          <div class="hud-item">
+            <span class="hud-label">Level</span>
+            <span class="hud-value" id="level-display">1</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Lines</span>
+            <span class="hud-value" id="lines-display">0 / 1</span>
+          </div>
+        </div>
+        <div class="hud-center">
+          <div class="formation-name" id="formation-name">Snake Line</div>
+          <div id="terrain-hint" class="terrain-hint hidden"></div>
+        </div>
+        <div class="hud-right">
+          <div class="hud-item timer-item">
+            <span class="hud-label">Timer</span>
+            <span class="hud-value timer" id="timer-display">3:00</span>
+          </div>
+          <button class="btn-back" id="btn-back">Back</button>
+        </div>
+      </div>
+
+      <div class="game-area">
+        <div id="task-panel" class="task-panel">
+          <span class="task-panel-label">Orders</span>
+          <div id="task-list" class="task-list"></div>
+          <div id="reward-bar" class="reward-bar"></div>
+          <div id="task-toast" class="task-toast hidden"></div>
+        </div>
+        <div class="left-sidebar">
+          <div id="rules-panel" class="rules-panel">
+            <span class="rules-panel-label">Tactical Bonuses</span>
+            <div class="rule-card" id="rule-morale">
+              <h4 class="rule-title">Morale Streak</h4>
+              <p class="rule-desc">Chain clears to build morale; resets if no clear</p>
+              <ul class="rule-effects">
+                <li>Morale ≥2: <strong>+3s</strong> per level</li>
+                <li>Morale ≥3: <strong>+3 keys</strong> next piece</li>
+              </ul>
+              <div class="rule-status" id="morale-rule-status">Now: —</div>
+            </div>
+            <div class="rule-card" id="rule-unified">
+              <h4 class="rule-title">Unified Ranks</h4>
+              <p class="rule-desc">One row, all same unit type</p>
+              <ul class="rule-effects">
+                <li>Each unified row: <strong>+5s</strong></li>
+              </ul>
+            </div>
+          </div>
+          <div id="character-ability-panel" class="character-ability-panel hidden">
+            <span class="character-ability-label">General's Skill</span>
+            <div class="character-ability-card">
+              <span class="character-ability-icon" id="character-ability-icon"></span>
+              <div class="character-ability-info">
+                <span class="character-ability-name" id="character-ability-name"></span>
+                <span class="character-ability-effect" id="character-ability-effect"></span>
+              </div>
+              <button class="btn-use-ability" id="btn-use-ability" title="Press Q">Deploy</button>
+            </div>
+          </div>
+          <div class="preview-panel">
+            <span class="preview-label">Next Formation</span>
+            <canvas id="preview-canvas"></canvas>
+          </div>
+        </div>
+        <div class="battlefield-group">
+          <canvas id="game-canvas"></canvas>
+        </div>
+        <div id="march-overlay" class="march-overlay hidden">
+          <div class="march-callout">
+            <span class="march-text" id="march-text">March!</span>
+            <span class="march-subtext hidden" id="march-subtext"></span>
+          </div>
+        </div>
+        <div id="character-overlay" class="character-overlay hidden">
+          <div class="character-select-box">
+            <h3>Choose Your General</h3>
+            <p class="character-select-sub">Pick one free skill per level · Buy more in Shop with Coins</p>
+            <div id="character-grid" class="character-grid"></div>
+          </div>
+        </div>
+        <div id="tutorial-overlay" class="tutorial-overlay hidden">
+          <div class="tutorial-box">
+            <h3>Tutorial</h3>
+            <p>Welcome, General! Learn the basics before battle.</p>
+            <ul>
+              <li><kbd>←</kbd> <kbd>→</kbd> Move · <kbd>↑</kbd> Rotate</li>
+              <li><kbd>↓</kbd> Soft drop · <kbd>Space</kbd> Hard drop</li>
+              <li class="tutorial-highlight">Each formation allows only <strong id="tutorial-input-limit">8</strong> move/rotate presses</li>
+              <li class="tutorial-highlight">↓, Space, and reward keys (Z/X/C) do <strong>not</strong> count</li>
+              <li>Watch the <strong>Keys</strong> counter at bottom-left</li>
+              <li>Plan ahead with the <strong>Next Formation</strong> preview</li>
+              <li>Clear multiple rows for <strong>Charge</strong> bonuses (+time)</li>
+              <li>Same unit in one row = <strong>Unified Ranks</strong> bonus (+5s per row)</li>
+              <li>Chain clears to build <strong>Morale</strong> (+3 keys at ×3)</li>
+              <li>Pick a <strong>General skill</strong> at level start (free, once)</li>
+              <li>Earn <strong>Coins</strong> per clear · buy extra skills in <strong>Shop</strong> (10 each)</li>
+              <li>Build <strong>Guard Posts</strong> and <strong>Gold Mines</strong> on the field (wood only)</li>
+              <li>Buildings let troops pass through; guards count as permanent soldiers</li>
+              <li><strong>Main City</strong> at bottom-left produces 1 coin and 1 wood every 10 seconds</li>
+              <li>Fill a row to send troops marching!</li>
+            </ul>
+            <p class="tutorial-goal">Goal: Clear <strong id="tutorial-goal">1</strong> line(s)</p>
+            <button class="btn-start" id="btn-start-tutorial">Begin March</button>
+          </div>
+        </div>
+        <div id="left-hud" class="left-hud">
+          <div id="shop-panel" class="shop-panel">
+            <span class="shop-panel-label">Shop</span>
+            <div id="shop-list" class="shop-list"></div>
+          </div>
+          <div id="resources-panel" class="resources-panel">
+            <div class="resource-row">
+              <div class="resource-pair">
+                <img src="assets/coins.gif" alt="Coins" class="resource-icon">
+                <span class="resource-value" id="coins-display">0</span>
+              </div>
+              <div class="resource-pair">
+                <img src="assets/wood.png" alt="Wood" class="resource-icon">
+                <span class="resource-value resource-value-wood" id="wood-display">0</span>
+              </div>
+            </div>
+          </div>
+          <div id="morale-panel" class="morale-panel">
+            <span class="morale-panel-label">Morale</span>
+            <span class="morale-panel-value" id="morale-display">—</span>
+            <span class="morale-panel-bonus" id="morale-bonus"></span>
+          </div>
+        </div>
+        <div id="coin-effect-layer" class="coin-effect-layer"></div>
+        <div class="bottom-left-hud">
+          <canvas id="city-panel-canvas"></canvas>
+          <div id="input-counter" class="input-counter">
+            <span class="input-counter-label">Keys</span>
+            <span class="input-counter-value" id="input-count-display">0 / 8</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="touch-controls" id="touch-controls">
+        <button class="touch-btn touch-btn-ability hidden" id="btn-use-ability-touch" title="General Skill">⚔</button>
+        <button class="touch-btn" data-action="left">←</button>
+        <button class="touch-btn" data-action="rotate">Rotate</button>
+        <button class="touch-btn" data-action="drop">Drop</button>
+        <button class="touch-btn" data-action="right">→</button>
+      </div>
+
+      <div class="game-controls-hint">
+        <span>← → Move</span>
+        <span>↑ Rotate</span>
+        <span>↓ Soft Drop</span>
+        <span>Space Hard Drop</span>
+        <span>Z/X Move Reward</span>
+        <span>C Rotate Reward</span>
+        <span>Q General Skill</span>
+      </div>
+    </div>
+
+    <!-- Victory Modal -->
+    <div id="victory-modal" class="modal hidden">
+      <div class="modal-content victory">
+        <img class="victory-champion" src="assets/champion.gif" alt="Champion">
+        <h2>Victory!</h2>
+        <p id="victory-msg">You cleared all target lines!</p>
+        <div class="modal-buttons">
+          <button class="btn-primary" id="btn-next-level">Next Level</button>
+          <button class="btn-secondary" id="btn-to-menu-win">Main Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Defeat Modal -->
+    <div id="defeat-modal" class="modal hidden">
+      <div class="modal-content defeat">
+        <h2>Defeat</h2>
+        <p id="defeat-msg">Time ran out. Mission failed.</p>
+        <div class="modal-buttons">
+          <button class="btn-primary" id="btn-retry">Try Again</button>
+          <button class="btn-secondary" id="btn-to-menu-lose">Main Menu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/levels.js"></script>
+  <script src="js/terrain.js"></script>
+  <script src="js/characters.js"></script>
+  <script src="js/buildings.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/formations.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/city.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
