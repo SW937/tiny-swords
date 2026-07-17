@@ -16,8 +16,14 @@ const TERRAIN_INFO = {
   },
   [TERRAIN.MOUNTAIN]: {
     label: 'Mountain',
-    hint: 'Mountain blocks: units cannot pass through',
+    hint: 'Mountain blocks placement; does not block row clears',
   },
+};
+
+const TERRAIN_SOUNDS = {
+  [TERRAIN.RIVER]: 'assets/audio/terrain-river.wav',
+  [TERRAIN.WIND]: 'assets/audio/terrain-wind.wav',
+  [TERRAIN.MOUNTAIN]: 'assets/audio/terrain-mountain.wav',
 };
 
 const TERRAIN_VISUAL = {
@@ -86,6 +92,29 @@ function createTerrainMap(levelId) {
 function isBlockedTerrain(terrainMap, row, col) {
   if (!terrainMap || row < 0 || row >= ROWS || col < 0 || col >= COLS) return false;
   return terrainMap[row][col] === TERRAIN.MOUNTAIN;
+}
+
+function isFormationUsingTerrain(terrainMap, formation, row, col) {
+  if (!terrainMap || !formation) return false;
+
+  for (const block of formation.blocks) {
+    const r = row + block.row;
+    const c = col + block.col;
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
+
+    const terrain = terrainMap[r][c];
+    if (terrain === TERRAIN.RIVER || terrain === TERRAIN.WIND) return true;
+
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const nr = r + dr;
+      const nc = c + dc;
+      if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && terrainMap[nr][nc] === TERRAIN.MOUNTAIN) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 function getTerrainFallMultiplier(terrainMap, formation, row, col) {

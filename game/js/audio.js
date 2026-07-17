@@ -8,6 +8,11 @@ class AudioManager {
     this.duckTimer = null;
 
     this.bgm = this._createAudio('assets/audio/bgm.wav', { loop: true, volume: this.bgmVolume });
+
+    this.terrainAmbience = null;
+    this.terrainAmbienceBoosted = false;
+    this.terrainBaseVolume = 0.28;
+    this.terrainBoostVolume = 0.75;
   }
 
   _createAudio(src, { loop = false, volume = 1 } = {}) {
@@ -112,6 +117,34 @@ class AudioManager {
     const character = getCharacter(charId);
     if (!character?.sound) return;
     this._playSfx(character.sound);
+  }
+
+  startTerrainAmbience(terrainType) {
+    this.stopTerrainAmbience();
+    if (!this.enabled || !terrainType) return;
+
+    const src = TERRAIN_SOUNDS[terrainType];
+    if (!src) return;
+
+    this.terrainAmbience = this._createAudio(src, {
+      loop: true,
+      volume: this.terrainBaseVolume,
+    });
+    this.terrainAmbienceBoosted = false;
+    this.terrainAmbience.play().catch(() => {});
+  }
+
+  stopTerrainAmbience() {
+    if (!this.terrainAmbience) return;
+    this.terrainAmbience.pause();
+    this.terrainAmbience = null;
+    this.terrainAmbienceBoosted = false;
+  }
+
+  updateTerrainAmbienceBoost(boosted) {
+    if (!this.terrainAmbience || boosted === this.terrainAmbienceBoosted) return;
+    this.terrainAmbienceBoosted = boosted;
+    this.terrainAmbience.volume = boosted ? this.terrainBoostVolume : this.terrainBaseVolume;
   }
 }
 

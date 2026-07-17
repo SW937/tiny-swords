@@ -51,12 +51,6 @@
       </div>
 
       <div class="game-area">
-        <div id="task-panel" class="task-panel">
-          <span class="task-panel-label">Orders</span>
-          <div id="task-list" class="task-list"></div>
-          <div id="reward-bar" class="reward-bar"></div>
-          <div id="task-toast" class="task-toast hidden"></div>
-        </div>
         <div class="left-sidebar">
           <div id="rules-panel" class="rules-panel">
             <span class="rules-panel-label">Tactical Bonuses</span>
@@ -109,32 +103,57 @@
             <div id="character-grid" class="character-grid"></div>
           </div>
         </div>
-        <div id="tutorial-overlay" class="tutorial-overlay hidden">
-          <div class="tutorial-box">
-            <h3>Tutorial</h3>
-            <p>Welcome, General! Learn the basics before battle.</p>
-            <ul>
-              <li><kbd>←</kbd> <kbd>→</kbd> Move · <kbd>↑</kbd> Rotate</li>
-              <li><kbd>↓</kbd> Soft drop · <kbd>Space</kbd> Hard drop</li>
-              <li class="tutorial-highlight">Each formation allows only <strong id="tutorial-input-limit">8</strong> move/rotate presses</li>
-              <li class="tutorial-highlight">↓, Space, and reward keys (Z/X/C) do <strong>not</strong> count</li>
-              <li>Watch the <strong>Keys</strong> counter at bottom-left</li>
-              <li>Plan ahead with the <strong>Next Formation</strong> preview</li>
-              <li>Clear multiple rows for <strong>Charge</strong> bonuses (+time)</li>
-              <li>Same unit in one row = <strong>Unified Ranks</strong> bonus (+5s per row)</li>
-              <li>Chain clears to build <strong>Morale</strong> (+3 keys at ×3)</li>
-              <li>Pick a <strong>General skill</strong> at level start (free, once)</li>
-              <li>Earn <strong>Coins</strong> per clear · buy extra skills in <strong>Shop</strong> (10 each)</li>
-              <li>Build <strong>Guard Posts</strong> and <strong>Gold Mines</strong> on the field (wood only)</li>
-              <li>Buildings let troops pass through; guards count as permanent soldiers</li>
-              <li><strong>Main City</strong> at bottom-left produces 1 coin and 1 wood every 10 seconds</li>
-              <li>Fill a row to send troops marching!</li>
-            </ul>
-            <p class="tutorial-goal">Goal: Clear <strong id="tutorial-goal">1</strong> line(s)</p>
-            <button class="btn-start" id="btn-start-tutorial">Begin March</button>
+        <div id="tutorial-overlay" class="rules-scroll-overlay hidden">
+          <div class="scroll-unfurl">
+            <div class="scroll-rod scroll-rod-top" aria-hidden="true"></div>
+            <div class="scroll-body">
+              <div class="scroll-content">
+                <h3>Tutorial</h3>
+                <p>Welcome, General! Learn the basics before battle.</p>
+                <ul>
+                  <li><kbd>←</kbd> <kbd>→</kbd> Move · <kbd>↑</kbd> Rotate</li>
+                  <li><kbd>↓</kbd> Soft drop · <kbd>Space</kbd> Hard drop</li>
+                  <li class="tutorial-highlight">Each formation allows only <strong id="tutorial-input-limit">8</strong> move/rotate presses</li>
+                  <li class="tutorial-highlight">↓, Space, and reward keys (Z/X/C) do <strong>not</strong> count</li>
+                  <li>Watch the <strong>Keys</strong> counter at bottom-left</li>
+                  <li>Plan ahead with the <strong>Next Formation</strong> preview</li>
+                  <li>Clear multiple rows for <strong>Charge</strong> bonuses (+time)</li>
+                  <li>Same unit in one row = <strong>Unified Ranks</strong> bonus (+5s per row)</li>
+                  <li>Chain clears to build <strong>Morale</strong> (+3 keys at ×3)</li>
+                  <li>Pick a <strong>General skill</strong> at level start (free, once)</li>
+                  <li>Earn <strong>Coins</strong> per clear · buy extra skills in <strong>Shop</strong> (10 each)</li>
+                  <li>Build <strong>Guard Posts</strong> and <strong>Gold Mines</strong> on the field (wood only)</li>
+                  <li>Buildings let troops pass through; guards count as permanent soldiers</li>
+                  <li><strong>Main City</strong> at bottom-left produces 1 coin and 1 wood every 10 seconds</li>
+                  <li>Fill a row to send troops marching!</li>
+                </ul>
+                <p class="tutorial-goal">Goal: Clear <strong id="tutorial-goal">1</strong> line(s)</p>
+                <button class="btn-start" id="btn-start-tutorial">Begin March</button>
+              </div>
+            </div>
+            <div class="scroll-rod scroll-rod-bottom" aria-hidden="true"></div>
+          </div>
+        </div>
+        <div id="terrain-rules-overlay" class="rules-scroll-overlay hidden">
+          <div class="scroll-unfurl">
+            <div class="scroll-rod scroll-rod-top" aria-hidden="true"></div>
+            <div class="scroll-body">
+              <div class="scroll-content terrain-rules-content">
+                <h3 id="terrain-rules-title">Terrain</h3>
+                <p id="terrain-rules-desc"></p>
+                <button class="btn-start" id="btn-dismiss-terrain-rules">Understood</button>
+              </div>
+            </div>
+            <div class="scroll-rod scroll-rod-bottom" aria-hidden="true"></div>
           </div>
         </div>
         <div id="left-hud" class="left-hud">
+          <div id="task-panel" class="task-panel">
+            <span class="task-panel-label">Orders</span>
+            <div id="task-list" class="task-list"></div>
+            <div id="reward-bar" class="reward-bar"></div>
+            <div id="task-toast" class="task-toast hidden"></div>
+          </div>
           <div id="shop-panel" class="shop-panel">
             <span class="shop-panel-label">Shop</span>
             <div id="shop-list" class="shop-list"></div>

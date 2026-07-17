@@ -91,6 +91,7 @@ class FormationGeneral {
   bindUI() {
     document.getElementById('btn-back').addEventListener('click', () => this.goToMenu());
     document.getElementById('btn-start-tutorial').addEventListener('click', () => this.startGameplay());
+    document.getElementById('btn-dismiss-terrain-rules').addEventListener('click', () => this.dismissTerrainRules());
     document.getElementById('btn-next-level').addEventListener('click', () => this.nextLevel());
     document.getElementById('btn-retry').addEventListener('click', () => this.retryLevel());
     document.getElementById('btn-to-menu-win').addEventListener('click', () => this.goToMenu());
@@ -297,6 +298,7 @@ class FormationGeneral {
 
   goToMenu() {
     this.state = 'menu';
+    audio.stopTerrainAmbience();
     this.cityPanel.stop();
     this.selectedCharacter = null;
     this.characterUsed = false;
@@ -312,9 +314,77 @@ class FormationGeneral {
   hideModals() {
     document.getElementById('victory-modal').classList.add('hidden');
     document.getElementById('defeat-modal').classList.add('hidden');
-    document.getElementById('tutorial-overlay').classList.add('hidden');
+    this.closeRulesScroll('tutorial-overlay', { immediate: true });
+    this.closeRulesScroll('terrain-rules-overlay', { immediate: true });
     document.getElementById('march-overlay').classList.add('hidden');
     document.getElementById('character-overlay').classList.add('hidden');
+  }
+
+  fitRulesScrollLayout(overlay) {
+    const scroll = overlay.querySelector('.scroll-unfurl');
+    const body = overlay.querySelector('.scroll-body');
+    const content = overlay.querySelector('.scroll-content');
+    if (!scroll || !body || !content) return;
+
+    scroll.classList.remove('is-open', 'is-closing');
+    body.style.maxHeight = 'none';
+    body.style.clipPath = 'none';
+    const naturalHeight = content.offsetHeight;
+    body.style.maxHeight = '';
+    body.style.clipPath = '';
+
+    const rodHeight = 36;
+    const padding = 24;
+    const maxAvailable = Math.max(120, overlay.clientHeight - rodHeight - padding);
+    const openHeight = Math.min(naturalHeight, maxAvailable);
+    scroll.style.setProperty('--scroll-open-height', `${openHeight}px`);
+  }
+
+  openRulesScroll(overlayId) {
+    ['tutorial-overlay', 'terrain-rules-overlay'].forEach((id) => {
+      if (id !== overlayId) this.closeRulesScroll(id, { immediate: true });
+    });
+
+    const overlay = document.getElementById(overlayId);
+    if (!overlay) return;
+
+    const scroll = overlay.querySelector('.scroll-unfurl');
+    const content = overlay.querySelector('.scroll-content');
+    scroll?.classList.remove('is-open', 'is-closing');
+    if (content) content.scrollTop = 0;
+    overlay.classList.remove('hidden');
+    overlay.offsetHeight;
+    this.fitRulesScrollLayout(overlay);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => scroll?.classList.add('is-open'));
+    });
+  }
+
+  closeRulesScroll(overlayId, { immediate = false } = {}) {
+    const overlay = document.getElementById(overlayId);
+    if (!overlay) return;
+
+    const scroll = overlay.querySelector('.scroll-unfurl');
+    if (immediate) {
+      scroll?.classList.remove('is-open', 'is-closing');
+      overlay.classList.add('hidden');
+      return;
+    }
+
+    if (!scroll || overlay.classList.contains('hidden')) return;
+
+    scroll.classList.remove('is-open');
+    scroll.classList.add('is-closing');
+    setTimeout(() => {
+      scroll.classList.remove('is-closing');
+      overlay.classList.add('hidden');
+    }, 780);
+  }
+
+  dismissTerrainRules() {
+    this.closeRulesScroll('terrain-rules-overlay');
+    this.isPaused = false;
+    this.lastTime = performance.now();
   }
 
   buildCharacterSelect() {
@@ -622,7 +692,7 @@ class FormationGeneral {
     this.exitBuildingPlacement();
     const message = `${building.name} built!`;
 
-    const fullRows = findFullRowsWithBuildings(this.board, this.buildings);
+    const fullRows = findFullRowsWithBuildings(this.board, this.buildings, this.terrainMap);
     if (fullRows.length > 0) {
       this.isProcessing = true;
       this.clearLines(fullRows);
@@ -765,7 +835,7 @@ class FormationGeneral {
     this.exitBlacksmithMode();
     const message = `Blacksmith! Forged ${placed} soldier${placed !== 1 ? 's' : ''}!`;
 
-    const fullRows = findFullRowsWithBuildings(this.board, this.buildings);
+    const fullRows = findFullRowsWithBuildings(this.board, this.buildings, this.terrainMap);
     if (fullRows.length > 0) {
       this.isProcessing = true;
       this.clearLines(fullRows);
@@ -809,6 +879,13 @@ class FormationGeneral {
     this.updateShopUI();
     this.updateCharacterAbilityUI();
 
+    const terrainType = getSpecialTerrainType(this.currentLevel);
+    if (terrainType) {
+      audio.startTerrainAmbience(terrainType);
+    } else {
+      audio.stopTerrainAmbience();
+    }
+
     this.showScreen('game');
     this.state = 'playing';
     this.cityPanel.resize(this.renderer.cellSize);
@@ -817,12 +894,20 @@ class FormationGeneral {
     if (level.tutorial) {
       document.getElementById('tutorial-goal').textContent = level.linesRequired;
       document.getElementById('tutorial-input-limit').textContent = this.maxInputsPerFall;
-      document.getElementById('tutorial-overlay').classList.remove('hidden');
+      this.openRulesScroll('tutorial-overlay');
       this.isPaused = true;
     } else {
-      this.hideModals();
-      this.isPaused = false;
-      this.lastTime = performance.now();
+      const terrainInfo = getTerrainHint(this.currentLevel);
+      if (terrainInfo) {
+        document.getElementById('terrain-rules-title').textContent = terrainInfo.label;
+        document.getElementById('terrain-rules-desc').textContent = terrainInfo.hint;
+        this.openRulesScroll('terrain-rules-overlay');
+        this.isPaused = true;
+      } else {
+        this.hideModals();
+        this.isPaused = false;
+        this.lastTime = performance.now();
+      }
     }
     this.updateCharacterAbilityUI();
   }
@@ -864,7 +949,7 @@ class FormationGeneral {
 
   startGameplay() {
     audio.init();
-    document.getElementById('tutorial-overlay').classList.add('hidden');
+    this.closeRulesScroll('tutorial-overlay');
     this.isPaused = false;
     this.updateShopUI();
     this.updateCharacterAbilityUI();
@@ -949,7 +1034,7 @@ class FormationGeneral {
     this.taskManager.checkFormation(this.currentFormation);
     audio.playPlace();
 
-    const fullRows = findFullRowsWithBuildings(this.board, this.buildings);
+    const fullRows = findFullRowsWithBuildings(this.board, this.buildings, this.terrainMap);
     if (fullRows.length > 0) {
       this.clearLines(fullRows);
     } else {
@@ -969,7 +1054,7 @@ class FormationGeneral {
   clearLines(rows) {
     const lineCount = rows.length;
     const charge = this.getChargeInfo(lineCount);
-    const unifiedRows = getUnifiedRows(this.board, rows);
+    const unifiedRows = getUnifiedRows(this.board, rows, this.terrainMap);
     const unifiedBonus = unifiedRows.length * UNIFIED_ROW_TIME_BONUS;
 
     this.moraleStreak++;
@@ -1036,9 +1121,16 @@ class FormationGeneral {
 
       if (this.linesCleared >= level.linesRequired) {
         this.levelComplete();
-      } else {
-        this.afterLock();
+        return;
       }
+
+      const cascadeRows = findFullRowsWithBuildings(this.board, this.buildings, this.terrainMap);
+      if (cascadeRows.length > 0) {
+        this.clearLines(cascadeRows);
+        return;
+      }
+
+      this.afterLock();
     }, 800);
   }
 
@@ -1058,6 +1150,7 @@ class FormationGeneral {
   async levelComplete() {
     this.state = 'victory';
     this.isProcessing = false;
+    audio.stopTerrainAmbience();
     audio.playVictory();
 
     const level = LEVELS[this.currentLevel - 1];
@@ -1101,6 +1194,7 @@ class FormationGeneral {
   gameOver(reason) {
     this.state = 'defeat';
     this.isProcessing = false;
+    audio.stopTerrainAmbience();
     audio.playDefeat();
 
     this.save.unlockedLevel = 1;
@@ -1269,6 +1363,12 @@ class FormationGeneral {
         this.currentRow,
         this.currentCol
       );
+      audio.updateTerrainAmbienceBoost(isFormationUsingTerrain(
+        this.terrainMap,
+        this.currentFormation,
+        this.currentRow,
+        this.currentCol
+      ));
       const interval = baseInterval * terrainMult;
 
       if (this.dropTimer >= interval) {

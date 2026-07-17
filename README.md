@@ -6,7 +6,7 @@
 
 部署完成后，游戏地址为：
 
-`https://<你的GitHub用户名>.github.io/tiny-swords/`
+`https://SW937.github.io/tiny-swords/`
 
 ## 本地运行
 

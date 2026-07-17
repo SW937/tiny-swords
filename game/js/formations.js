@@ -167,14 +167,20 @@ function findFullRows(board) {
   return full;
 }
 
-function isUnifiedRow(board, row) {
-  const units = board[row];
-  if (!units.every(cell => cell !== null)) return false;
-  return units.every(unit => unit === units[0]);
+function isUnifiedRow(board, row, terrainMap = null) {
+  let firstUnit = null;
+  for (let c = 0; c < COLS; c++) {
+    if (isBlockedTerrain(terrainMap, row, c)) continue;
+    const unit = board[row][c];
+    if (unit === null) return false;
+    if (firstUnit === null) firstUnit = unit;
+    else if (unit !== firstUnit) return false;
+  }
+  return firstUnit !== null;
 }
 
-function getUnifiedRows(board, rows) {
-  return rows.filter(row => isUnifiedRow(board, row));
+function getUnifiedRows(board, rows, terrainMap = null) {
+  return rows.filter(row => isUnifiedRow(board, row, terrainMap));
 }
 
 function clearRows(board, rows) {

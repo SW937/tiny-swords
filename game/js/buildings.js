@@ -61,8 +61,9 @@ function countBuildingPlaceableCells(board, buildings, terrainMap) {
   return count;
 }
 
-function isRowFullWithBuildings(board, buildings, row) {
+function isRowFullWithBuildings(board, buildings, row, terrainMap = null) {
   for (let c = 0; c < COLS; c++) {
+    if (isBlockedTerrain(terrainMap, row, c)) continue;
     const unit = board[row][c];
     const buildingId = getBuildingAt(buildings, row, c);
     const guardFill = buildingId && getBuilding(buildingId)?.actsAsSoldier;
@@ -71,10 +72,10 @@ function isRowFullWithBuildings(board, buildings, row) {
   return true;
 }
 
-function findFullRowsWithBuildings(board, buildings) {
+function findFullRowsWithBuildings(board, buildings, terrainMap = null) {
   const full = [];
   for (let r = 0; r < ROWS; r++) {
-    if (isRowFullWithBuildings(board, buildings, r)) full.push(r);
+    if (isRowFullWithBuildings(board, buildings, r, terrainMap)) full.push(r);
   }
   return full;
 }
