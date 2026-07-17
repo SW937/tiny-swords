@@ -221,6 +221,27 @@ function countEmptyCells(board) {
   return count;
 }
 
+function fillLowestRowGaps(board, terrainMap = null, unit = 'pawn_hammer') {
+  const newBoard = board.map(r => [...r]);
+  let targetRow = -1;
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (newBoard[r].some(cell => cell !== null)) {
+      targetRow = r;
+      break;
+    }
+  }
+  if (targetRow < 0) return { board: newBoard, filled: 0 };
+
+  let filled = 0;
+  for (let c = 0; c < COLS; c++) {
+    if (newBoard[targetRow][c] !== null) continue;
+    if (isBlockedTerrain(terrainMap, targetRow, c)) continue;
+    newBoard[targetRow][c] = unit;
+    filled++;
+  }
+  return { board: newBoard, filled };
+}
+
 function fillEmptyCells(board, count, unit = 'pawn_hammer') {
   const newBoard = board.map(r => [...r]);
   let filled = 0;

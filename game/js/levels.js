@@ -13,6 +13,15 @@ const LEVELS = [
 
 const SAVE_KEY = 'formation-general-save';
 const TOTAL_CLEARS_KEY = 'formation-general-total-clears';
+const LOADOUT_KEY = 'formation-general-loadout';
+
+const DEFAULT_LOADOUT = {
+  breaker: 'ironwall',
+  chrono: 'chrono',
+  forge: 'blacksmith',
+  tactician: 'strategist',
+  rally: 'merchant',
+};
 
 let sharedClearCount = null;
 
@@ -91,6 +100,28 @@ function saveProgress(save) {
   localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 }
 
+function loadLoadout() {
+  try {
+    const data = JSON.parse(localStorage.getItem(LOADOUT_KEY));
+    if (!data || typeof data !== 'object') return { ...DEFAULT_LOADOUT };
+    const loadout = { ...DEFAULT_LOADOUT };
+    for (const [rawSlot, charId] of Object.entries(data)) {
+      const slot = migrateLoadoutSlot(rawSlot);
+      const char = getCharacter(charId);
+      if (char && char.slot === slot && CHARACTER_SLOTS.includes(slot)) {
+        loadout[slot] = char.id;
+      }
+    }
+    return loadout;
+  } catch {
+    return { ...DEFAULT_LOADOUT };
+  }
+}
+
+function saveLoadout(loadout) {
+  localStorage.setItem(LOADOUT_KEY, JSON.stringify(loadout));
+}
+
 function resetProgress() {
   localStorage.removeItem(SAVE_KEY);
 }
@@ -99,4 +130,39 @@ function formatTime(seconds) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+const DIFFICULTY_TIER_NAMES = [
+  '初征', '再战', '鏖战', '百战', '炼狱', '修罗', '天罚',
+];
+
+function getDifficultyTierName(tier) {
+  if (tier <= 0) return DIFFICULTY_TIER_NAMES[0];
+  return DIFFICULTY_TIER_NAMES[Math.min(tier, DIFFICULTY_TIER_NAMES.length - 1)];
+}
+
+function getDifficultyModifiers(totalClears) {
+  const tier = Math.max(0, totalClears);
+  return {
+    tier,
+    tierName: getDifficultyTierName(tier),
+    timeMultiplier: Math.max(0.7, 1 - tier * 0.05),
+    dropSpeedBonus: tier * 30,
+    inputPenalty: Math.min(3, Math.floor(tier / 2)),
+    extraLines: Math.min(4, Math.floor(tier / 2)),
+    extraTerrainCells: Math.min(2, Math.floor(tier / 3)),
+  };
+}
+
+function getEffectiveLinesRequired(level, totalClears) {
+  const mods = getDifficultyModifiers(totalClears);
+  return level.linesRequired + mods.extraLines;
+}
+
+function formatDifficultyDisplay(totalClears) {
+  const mods = getDifficultyModifiers(totalClears);
+  if (mods.tier === 0) {
+    return `Cleared ${totalClears} times`;
+  }
+  return `Cleared ${totalClears} times · ${mods.tierName}`;
 }

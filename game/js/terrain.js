@@ -75,10 +75,19 @@ function getTerrainCellCount(levelId) {
   return Math.floor((levelId - 3) / 2) + 1;
 }
 
-function createTerrainMap(levelId) {
+function createTerrainMap(levelId, totalClears = 0) {
   const map = Array.from({ length: ROWS }, () => Array(COLS).fill(TERRAIN.GRASS));
-  const type = getSpecialTerrainType(levelId);
-  const count = getTerrainCellCount(levelId);
+  const mods = getDifficultyModifiers(totalClears);
+  let type = getSpecialTerrainType(levelId);
+  let count = getTerrainCellCount(levelId);
+
+  if (!type && levelId === 2 && totalClears >= 2) {
+    type = TERRAIN.RIVER;
+    count = 1;
+  } else if (type && count > 0) {
+    count = Math.min(4, count + mods.extraTerrainCells);
+  }
+
   if (!type || count === 0) return map;
 
   const positions = TERRAIN_CELL_POSITIONS[count];
@@ -138,8 +147,16 @@ function getTerrainFallMultiplier(terrainMap, formation, row, col) {
   return 1;
 }
 
-function getTerrainHint(levelId) {
-  const type = getSpecialTerrainType(levelId);
+function getActiveTerrainType(levelId, totalClears = 0) {
+  let type = getSpecialTerrainType(levelId);
+  if (!type && levelId === 2 && totalClears >= 2) {
+    type = TERRAIN.RIVER;
+  }
+  return type;
+}
+
+function getTerrainHint(levelId, totalClears = 0) {
+  const type = getActiveTerrainType(levelId, totalClears);
   if (!type) return null;
   return TERRAIN_INFO[type];
 }

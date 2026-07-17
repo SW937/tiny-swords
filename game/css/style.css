@@ -82,6 +82,18 @@ body {
   color: #8a7a50;
 }
 
+.difficulty-badge {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: #c45a3a;
+  letter-spacing: 0.08em;
+}
+
+.difficulty-badge.hidden {
+  display: none;
+}
+
 .level-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -154,6 +166,248 @@ body {
 }
 
 .menu-hint p {
+  letter-spacing: 0.1em;
+}
+
+.btn-dispatch {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 28px;
+  margin-bottom: 1.5rem;
+  border: 2px solid #8a6830;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4a3820 0%, #2a2010 100%);
+  color: #f0d060;
+  font-family: 'Ma Shan Zheng', cursive;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+}
+
+.btn-dispatch:hover {
+  border-color: #d4a843;
+  background: linear-gradient(135deg, #5a4828 0%, #3a3018 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(212, 168, 67, 0.25);
+}
+
+.btn-dispatch-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.btn-dispatch-text {
+  font-size: 1.6rem;
+  letter-spacing: 0.15em;
+}
+
+.btn-dispatch-sub {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.65rem;
+  color: #8a7a50;
+  letter-spacing: 0.2em;
+}
+
+.btn-dispatch.has-unlock {
+  border-color: #6aba60;
+  animation: dispatch-glow 2s ease-in-out infinite;
+}
+
+@keyframes dispatch-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(106, 186, 96, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(106, 186, 96, 0.45); }
+}
+
+/* ===== Dispatch Hall ===== */
+.modal-content.dispatch {
+  max-width: 720px;
+  width: 92%;
+  padding: 2rem 2rem 1.5rem;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content.dispatch h2 {
+  color: #d4a843;
+  font-size: 2.4rem;
+  letter-spacing: 0.15em;
+}
+
+.dispatch-subtitle {
+  color: #8a7a50;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.dispatch-clears {
+  color: #a89060;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.dispatch-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.dispatch-slot {
+  background: rgba(26, 18, 8, 0.6);
+  border: 1px solid #5a4a28;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.dispatch-slot-label {
+  font-size: 0.75rem;
+  color: #8a7a50;
+  letter-spacing: 0.15em;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.dispatch-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.dispatch-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  border: 2px solid #5a4a28;
+  border-radius: 8px;
+  background: rgba(42, 31, 14, 0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.dispatch-option:hover:not(.locked):not(.equipped) {
+  border-color: #d4a843;
+  background: rgba(74, 58, 28, 0.5);
+}
+
+.dispatch-option.equipped {
+  border-color: #6aba60;
+  background: rgba(74, 138, 64, 0.15);
+  cursor: default;
+}
+
+.dispatch-option.locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-color: #3a3020;
+}
+
+.dispatch-option.elite:not(.locked) {
+  border-color: #8a6830;
+}
+
+.dispatch-option.elite.equipped {
+  border-color: #ffd040;
+  background: rgba(212, 168, 67, 0.12);
+}
+
+.dispatch-option.legendary:not(.locked) {
+  border-color: #c87820;
+  background: rgba(90, 50, 10, 0.35);
+}
+
+.dispatch-option.legendary.equipped {
+  border-color: #e8a030;
+  background: rgba(120, 70, 20, 0.25);
+}
+
+.dispatch-option-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  margin-bottom: 6px;
+}
+
+.dispatch-option-name {
+  font-family: 'Ma Shan Zheng', cursive;
+  font-size: 1.1rem;
+  color: #ffd860;
+  margin-bottom: 2px;
+}
+
+.dispatch-option.elite .dispatch-option-name {
+  color: #ffd040;
+}
+
+.dispatch-option.legendary .dispatch-option-name {
+  color: #ffb040;
+}
+
+.dispatch-option-effect {
+  font-size: 0.75rem;
+  color: #6aba60;
+  margin-bottom: 4px;
+}
+
+.dispatch-option-badge {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.dispatch-option-badge.equipped {
+  background: rgba(106, 186, 96, 0.25);
+  color: #6aba60;
+}
+
+.dispatch-option-badge.locked {
+  background: rgba(90, 74, 40, 0.3);
+  color: #8a7a50;
+}
+
+.dispatch-option-badge.elite-tag {
+  background: rgba(212, 168, 67, 0.2);
+  color: #d4a843;
+}
+
+.dispatch-option-badge.legendary-tag {
+  background: rgba(200, 120, 32, 0.25);
+  color: #e8a030;
+}
+
+.character-card.elite {
+  border-color: #8a6830;
+}
+
+.character-card.elite:hover {
+  border-color: #ffd040;
+  box-shadow: 0 6px 20px rgba(255, 208, 64, 0.2);
+}
+
+.character-card.legendary {
+  border-color: #c87820;
+  background: rgba(90, 50, 10, 0.35);
+}
+
+.character-card.legendary:hover {
+  border-color: #e8a030;
+  box-shadow: 0 6px 20px rgba(232, 160, 48, 0.25);
+}
+
+.character-card .elite-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  color: #d4a843;
+  background: rgba(212, 168, 67, 0.15);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-bottom: 4px;
   letter-spacing: 0.1em;
 }
 
@@ -1551,6 +1805,14 @@ body {
 
   .left-sidebar {
     display: none;
+  }
+
+  .dispatch-options {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content.dispatch {
+    padding: 1.5rem 1rem;
   }
 
   .character-grid {

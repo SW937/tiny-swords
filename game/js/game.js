@@ -4,6 +4,7 @@ const MORALE_MIN_STREAK_FOR_TIME = 2;
 const MORALE_MIN_STREAK_FOR_KEYS = 3;
 const MORALE_BONUS_KEYS = 3;
 const COINS_PER_LINE = 1;
+const MAX_COIN_GRANT = 9;
 const SKILL_COST = 10;
 const BLACKSMITH_PLACEMENTS = 3;
 
@@ -11,6 +12,7 @@ class FormationGeneral {
   constructor() {
     this.save = loadSave();
     migrateClearCountFromSave(this.save);
+    this.loadout = loadLoadout();
     this.state = 'menu';
     this.currentLevel = 1;
     this.board = createEmptyBoard();
@@ -39,6 +41,10 @@ class FormationGeneral {
     this.blacksmithRemaining = 0;
     this.blacksmithTarget = 0;
     this.blacksmithHover = null;
+    this.dropSlowUntil = 0;
+    this.dropSlowMultiplier = 1;
+    this.supplyBonusClearsRemaining = 0;
+    this.supplyBonusPerClear = 0;
     this.buildings = createEmptyBuildings();
     this.buildingPlacement = null;
     this.buildingHover = null;
@@ -62,7 +68,6 @@ class FormationGeneral {
 
     this.bindUI();
     this.bindInput();
-    this.buildLevelGrid();
     this.updateMenuDisplay();
     this.refreshTotalClears();
     this.startClearPolling();
@@ -96,6 +101,8 @@ class FormationGeneral {
     document.getElementById('btn-retry').addEventListener('click', () => this.retryLevel());
     document.getElementById('btn-to-menu-win').addEventListener('click', () => this.goToMenu());
     document.getElementById('btn-to-menu-lose').addEventListener('click', () => this.goToMenu());
+    document.getElementById('btn-dispatch').addEventListener('click', () => this.showDispatchHall());
+    document.getElementById('btn-close-dispatch').addEventListener('click', () => this.hideDispatchHall());
     document.getElementById('btn-use-ability').addEventListener('click', () => this.useCharacterAbility());
     const touchAbility = document.getElementById('btn-use-ability-touch');
     if (touchAbility) touchAbility.addEventListener('click', () => this.useCharacterAbility());
@@ -103,6 +110,7 @@ class FormationGeneral {
     this.bindCanvasInput();
     this.buildCharacterSelect();
     this.buildShop();
+    this.buildDispatchHall();
   }
 
   bindCanvasInput() {
@@ -251,10 +259,12 @@ class FormationGeneral {
   buildLevelGrid() {
     const grid = document.getElementById('level-grid');
     grid.innerHTML = '';
+    const totalClears = loadTotalClears();
     LEVELS.forEach(level => {
       const btn = document.createElement('button');
       btn.className = 'level-btn';
-      btn.innerHTML = `${level.id}<span class="level-req">${level.linesRequired} lines</span>`;
+      const linesRequired = getEffectiveLinesRequired(level, totalClears);
+      btn.innerHTML = `${level.id}<span class="level-req">${linesRequired} lines</span>`;
 
       if (level.id > this.save.unlockedLevel) {
         btn.classList.add('locked');
@@ -275,8 +285,26 @@ class FormationGeneral {
   }
 
   updateMenuDisplay() {
+    const clears = loadTotalClears();
     document.getElementById('clear-count-display').textContent =
-      `Cleared ${loadTotalClears()} times`;
+      formatDifficultyDisplay(clears);
+    this.updateDispatchButton(clears);
+    this.buildLevelGrid();
+  }
+
+  updateDispatchButton(totalClears) {
+    const btn = document.getElementById('btn-dispatch');
+    if (!btn) return;
+    const hasUnlockable = CHARACTERS.some(
+      c => c.tier === 'elite' &&
+        isCharacterUnlocked(c, totalClears) &&
+        this.loadout[c.slot] !== c.id
+    );
+    btn.classList.toggle('has-unlock', hasUnlockable);
+  }
+
+  getRosterCharacters() {
+    return getActiveRoster(this.loadout, loadTotalClears());
   }
 
   async refreshTotalClears() {
@@ -307,13 +335,17 @@ class FormationGeneral {
     this.hideModals();
     this.updateCharacterAbilityUI();
     this.showScreen('menu');
-    this.buildLevelGrid();
+    this.updateMenuDisplay();
+    this.buildCharacterSelect();
+    this.buildShop();
     this.refreshTotalClears();
+    this.buildDispatchHall();
   }
 
   hideModals() {
     document.getElementById('victory-modal').classList.add('hidden');
     document.getElementById('defeat-modal').classList.add('hidden');
+    this.hideDispatchHall();
     this.closeRulesScroll('tutorial-overlay', { immediate: true });
     this.closeRulesScroll('terrain-rules-overlay', { immediate: true });
     document.getElementById('march-overlay').classList.add('hidden');
@@ -391,11 +423,14 @@ class FormationGeneral {
     const grid = document.getElementById('character-grid');
     if (!grid) return;
     grid.innerHTML = '';
-    CHARACTERS.forEach(char => {
+    this.getRosterCharacters().forEach(char => {
       const card = document.createElement('button');
       card.type = 'button';
-      card.className = 'character-card';
+      card.className = 'character-card' +
+        (char.tier === 'elite' ? ' elite' : '') +
+        (char.tier === 'legendary' ? ' legendary' : '');
       card.innerHTML = `
+        ${char.tier === 'elite' ? '<span class="elite-badge">ELITE</span>' : ''}
         <img class="character-icon" src="${char.icon}" alt="${char.name}">
         <span class="character-name">${char.name}</span>
         <span class="character-title">${char.title}</span>
@@ -408,6 +443,100 @@ class FormationGeneral {
       });
       grid.appendChild(card);
     });
+  }
+
+  buildDispatchHall() {
+    const container = document.getElementById('dispatch-slots');
+    if (!container) return;
+
+    const totalClears = loadTotalClears();
+    container.innerHTML = '';
+
+    const slotLabels = {
+      breaker: 'Breaker · Frontline',
+      chrono: 'Chrono · Time',
+      forge: 'Forge · Support',
+      tactician: 'Tactics · Command',
+      rally: 'Rally · Supply',
+    };
+
+    CHARACTER_SLOTS.forEach(slot => {
+      const slotEl = document.createElement('div');
+      slotEl.className = 'dispatch-slot';
+      slotEl.innerHTML = `<span class="dispatch-slot-label">${slotLabels[slot] || slot}</span>`;
+
+      const optionsEl = document.createElement('div');
+      optionsEl.className = 'dispatch-options';
+
+      getCharactersForSlot(slot).forEach(char => {
+        const unlocked = isCharacterUnlocked(char, totalClears);
+        const equipped = this.loadout[slot] === char.id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dispatch-option';
+        if (char.tier === 'elite') btn.classList.add('elite');
+        if (char.tier === 'legendary') btn.classList.add('legendary');
+        if (equipped) btn.classList.add('equipped');
+        if (!unlocked) btn.classList.add('locked');
+
+        let badge = '';
+        if (equipped) {
+          badge = '<span class="dispatch-option-badge equipped">Equipped</span>';
+        } else if (!unlocked) {
+          badge = `<span class="dispatch-option-badge locked">Requires ${char.unlockClears} clears</span>`;
+        } else if (char.tier === 'elite') {
+          badge = '<span class="dispatch-option-badge elite-tag">Elite</span>';
+        } else if (char.tier === 'legendary') {
+          badge = '<span class="dispatch-option-badge legendary-tag">Legendary</span>';
+        }
+
+        btn.innerHTML = `
+          <img class="dispatch-option-icon" src="${char.icon}" alt="${char.name}">
+          <span class="dispatch-option-name">${char.name}</span>
+          <span class="dispatch-option-effect">${char.effectLabel}</span>
+          ${badge}
+        `;
+
+        if (unlocked && !equipped) {
+          btn.addEventListener('click', () => {
+            audio.init();
+            this.equipCharacter(slot, char.id);
+          });
+        }
+
+        optionsEl.appendChild(btn);
+      });
+
+      slotEl.appendChild(optionsEl);
+      container.appendChild(slotEl);
+    });
+
+    const clearsEl = document.getElementById('dispatch-clears-display');
+    if (clearsEl) clearsEl.textContent = `Total clears: ${totalClears}`;
+    this.updateDispatchButton(totalClears);
+  }
+
+  showDispatchHall() {
+    audio.init();
+    this.buildDispatchHall();
+    document.getElementById('dispatch-modal').classList.remove('hidden');
+  }
+
+  hideDispatchHall() {
+    document.getElementById('dispatch-modal')?.classList.add('hidden');
+  }
+
+  equipCharacter(slot, charId) {
+    const char = getCharacter(charId);
+    if (!char || char.slot !== slot) return;
+    if (!isCharacterUnlocked(char, loadTotalClears())) return;
+
+    this.loadout[slot] = charId;
+    saveLoadout(this.loadout);
+    this.buildDispatchHall();
+    this.buildCharacterSelect();
+    this.buildShop();
+    audio.playPlace();
   }
 
   showCharacterSelect() {
@@ -487,7 +616,7 @@ class FormationGeneral {
     skillsSection.innerHTML = '<span class="shop-category-label">Skills</span>';
     const skillsList = document.createElement('div');
     skillsList.className = 'shop-category-list';
-    CHARACTERS.forEach(char => {
+    this.getRosterCharacters().forEach(char => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'shop-item';
@@ -496,7 +625,7 @@ class FormationGeneral {
       btn.innerHTML = `
         <img class="shop-item-icon" src="${char.icon}" alt="${char.name}">
         <span class="shop-item-info">
-          <span class="shop-item-name">${char.name}</span>
+          <span class="shop-item-name">${char.name}${char.tier === 'elite' ? ' ★' : ''}${char.tier === 'legendary' ? ' ★★' : ''}</span>
           <span class="shop-item-cost"><img src="assets/coins.gif" alt=""> ${SKILL_COST}</span>
         </span>
       `;
@@ -570,10 +699,15 @@ class FormationGeneral {
 
   addCoins(amount) {
     if (amount <= 0) return;
-    this.coins += amount;
+    let remaining = amount;
+    while (remaining > 0) {
+      const grant = Math.min(remaining, MAX_COIN_GRANT);
+      this.coins += grant;
+      remaining -= grant;
+      audio.playCoin();
+      this.playResourceEffect({ coins: grant });
+    }
     this.updateResourcesDisplay();
-    audio.playCoin();
-    this.playResourceEffect({ coins: amount });
   }
 
   addWood(amount) {
@@ -584,15 +718,8 @@ class FormationGeneral {
   }
 
   addCityProduction(coins, wood) {
-    if (coins > 0) {
-      this.coins += coins;
-      audio.playCoin();
-    }
-    if (wood > 0) this.wood += wood;
-    if (coins > 0 || wood > 0) {
-      this.updateResourcesDisplay();
-      this.playResourceEffect({ coins, wood });
-    }
+    if (coins > 0) this.addCoins(coins);
+    if (wood > 0) this.addWood(wood);
   }
 
   playResourceEffect({ coins = 0, wood = 0 }) {
@@ -766,27 +893,123 @@ class FormationGeneral {
     if (this.state !== 'playing' || this.isPaused || this.isProcessing) return;
 
     audio.init();
-    let message = '';
+    const params = getSkillParams(charId);
+    if (!params) return;
 
     audio.playCharacterSound(charId);
+    const char = getCharacter(charId);
 
-    switch (charId) {
-      case 'ironwall':
-        this.board = clearBottomRows(this.board, 2);
-        message = 'Iron Wall! Cleared 2 bottom rows!';
+    switch (params.type) {
+      case 'clearBottom': {
+        this.board = clearBottomRows(this.board, params.rows);
+        if (params.timeBonus > 0) {
+          this.timeRemaining += params.timeBonus;
+          this.updateTimerDisplay();
+        }
+        if (params.coins > 0) {
+          this.addCoins(params.coins);
+        }
+        if (params.wood > 0) {
+          this.addWood(params.wood);
+        }
+        const timePart = params.timeBonus > 0 ? ` +${params.timeBonus}s` : '';
+        const coinPart = params.coins > 0 ? ` +${params.coins} coins` : '';
+        const woodPart = params.wood > 0 ? ` +${params.wood} wood` : '';
+        this.taskManager.showToast(`${char.name}! Cleared ${params.rows} bottom rows${timePart}${coinPart}${woodPart}!`);
         break;
-      case 'chrono':
-        this.timeRemaining += 60;
+      }
+      case 'addTime': {
+        this.timeRemaining += params.seconds;
         this.updateTimerDisplay();
-        message = 'Chronomancer! +60 seconds!';
+        this.taskManager.showToast(`${char.name}! +${params.seconds} seconds!`);
         break;
-      case 'blacksmith':
-        this.startBlacksmithPlacement();
+      }
+      case 'slowTime': {
+        this.timeRemaining += params.seconds;
+        this.dropSlowUntil = performance.now() + params.slowDuration * 1000;
+        this.dropSlowMultiplier = params.slowMultiplier || 2;
+        this.updateTimerDisplay();
+        this.taskManager.showToast(
+          `${char.name}! +${params.seconds}s · Fall speed halved for ${params.slowDuration}s!`
+        );
+        break;
+      }
+      case 'place':
+        this.startBlacksmithPlacement(params.count);
         return;
-    }
+      case 'fillBottomGaps': {
+        const result = fillLowestRowGaps(this.board, this.terrainMap);
+        this.board = result.board;
+        if (params.timeBonus > 0) {
+          this.timeRemaining += params.timeBonus;
+          this.updateTimerDisplay();
+        }
+        const timePart = params.timeBonus > 0 ? ` +${params.timeBonus}s` : '';
+        this.taskManager.showToast(
+          `${char.name}! Sealed ${result.filled} gap${result.filled !== 1 ? 's' : ''}${timePart}!`
+        );
 
-    if (message) {
-      this.taskManager.showToast(message);
+        const fullRows = findFullRowsWithBuildings(this.board, this.buildings, this.terrainMap);
+        if (fullRows.length > 0) {
+          this.isProcessing = true;
+          this.clearLines(fullRows);
+          return;
+        }
+        break;
+      }
+      case 'addKeys': {
+        this.bonusInputsNextFall += params.keys;
+        if (params.timeBonus > 0) {
+          this.timeRemaining += params.timeBonus;
+          this.updateTimerDisplay();
+        }
+        const timePart = params.timeBonus > 0 ? ` · +${params.timeBonus}s` : '';
+        this.taskManager.showToast(`${char.name}! +${params.keys} keys on next piece${timePart}!`);
+        break;
+      }
+      case 'rerollPiece': {
+        this.rerollCurrentFormation();
+        if (params.keys > 0) {
+          this.bonusInputsNextFall += params.keys;
+        }
+        this.taskManager.showToast(
+          `${char.name}! Formation rerolled · +${params.keys} keys on next piece!`
+        );
+        break;
+      }
+      case 'addResources': {
+        if (params.coins > 0) this.addCoins(params.coins);
+        if (params.wood > 0) this.addWood(params.wood);
+        const parts = [];
+        if (params.coins > 0) parts.push(`+${params.coins} coins`);
+        if (params.wood > 0) parts.push(`+${params.wood} wood`);
+        this.taskManager.showToast(`${char.name}! ${parts.join(' · ')}!`);
+        break;
+      }
+      case 'supplyContract': {
+        if (params.upfrontWood > 0) this.addWood(params.upfrontWood);
+        this.supplyBonusClearsRemaining = params.bonusClears;
+        this.supplyBonusPerClear = params.bonusWoodPerClear;
+        this.taskManager.showToast(
+          `${char.name}! +${params.upfrontWood} wood · +${params.bonusWoodPerClear}/clear for ${params.bonusClears} clears!`
+        );
+        break;
+      }
+      case 'rallyMorale': {
+        this.moraleStreak = params.morale;
+        if (params.timeBonus > 0) {
+          this.timeRemaining += params.timeBonus;
+          this.updateTimerDisplay();
+        }
+        this.updateMoraleDisplay();
+        this.flashRuleCard('rule-morale');
+        this.taskManager.showToast(
+          `${char.name}! Morale ×${params.morale} · +${params.timeBonus}s!`
+        );
+        break;
+      }
+      default:
+        return;
     }
 
     if (!this.isProcessing && !canPlaceAny(this.board, this.terrainMap) && this.state === 'playing') {
@@ -794,7 +1017,21 @@ class FormationGeneral {
     }
   }
 
-  startBlacksmithPlacement() {
+  rerollCurrentFormation() {
+    if (!this.currentFormation) return;
+
+    this.currentFormation = randomFormation();
+    this.currentRow = -this.currentFormation.shape.length;
+    this.currentCol = Math.floor(COLS / 2) - 1;
+    document.getElementById('formation-name').textContent = this.currentFormation.name;
+    this.updatePreview();
+
+    if (!canPlace(this.board, this.currentFormation, this.currentRow, this.currentCol, this.terrainMap)) {
+      this.gameOver('overflow');
+    }
+  }
+
+  startBlacksmithPlacement(count = BLACKSMITH_PLACEMENTS) {
     const emptyCells = countPlaceableCells(this.board, this.terrainMap);
     if (emptyCells <= 0) {
       this.taskManager.showToast('Blacksmith: no empty cells to forge!');
@@ -805,7 +1042,7 @@ class FormationGeneral {
     }
 
     this.blacksmithMode = true;
-    this.blacksmithTarget = Math.min(BLACKSMITH_PLACEMENTS, emptyCells);
+    this.blacksmithTarget = Math.min(count, emptyCells);
     this.blacksmithRemaining = this.blacksmithTarget;
     this.blacksmithHover = null;
     this.isProcessing = true;
@@ -869,7 +1106,16 @@ class FormationGeneral {
 
     document.getElementById('level-display').textContent = this.currentLevel;
     document.getElementById('lines-display').textContent =
-      `0 / ${level.linesRequired}`;
+      `0 / ${this.linesRequired}`;
+    const difficultyEl = document.getElementById('difficulty-display');
+    const mods = getDifficultyModifiers(loadTotalClears());
+    if (mods.tier > 0) {
+      difficultyEl.textContent = mods.tierName;
+      difficultyEl.classList.remove('hidden');
+    } else {
+      difficultyEl.textContent = '';
+      difficultyEl.classList.add('hidden');
+    }
     document.getElementById('formation-name').textContent =
       this.currentFormation.name;
     this.updateMoraleDisplay();
@@ -879,7 +1125,8 @@ class FormationGeneral {
     this.updateShopUI();
     this.updateCharacterAbilityUI();
 
-    const terrainType = getSpecialTerrainType(this.currentLevel);
+    const totalClears = loadTotalClears();
+    const terrainType = getActiveTerrainType(this.currentLevel, totalClears);
     if (terrainType) {
       audio.startTerrainAmbience(terrainType);
     } else {
@@ -892,12 +1139,12 @@ class FormationGeneral {
     this.cityPanel.start();
 
     if (level.tutorial) {
-      document.getElementById('tutorial-goal').textContent = level.linesRequired;
+      document.getElementById('tutorial-goal').textContent = this.linesRequired;
       document.getElementById('tutorial-input-limit').textContent = this.maxInputsPerFall;
       this.openRulesScroll('tutorial-overlay');
       this.isPaused = true;
     } else {
-      const terrainInfo = getTerrainHint(this.currentLevel);
+      const terrainInfo = getTerrainHint(this.currentLevel, totalClears);
       if (terrainInfo) {
         document.getElementById('terrain-rules-title').textContent = terrainInfo.label;
         document.getElementById('terrain-rules-desc').textContent = terrainInfo.hint;
@@ -915,14 +1162,18 @@ class FormationGeneral {
   startLevel(levelId, { resetCoins = true } = {}) {
     this.currentLevel = levelId;
     const level = LEVELS[levelId - 1];
+    const totalClears = loadTotalClears();
+    const mods = getDifficultyModifiers(totalClears);
 
     this.board = createEmptyBoard();
     this.buildings = createEmptyBuildings();
     this.buildingProductionTimers = {};
-    this.terrainMap = createTerrainMap(levelId);
+    this.terrainMap = createTerrainMap(levelId, totalClears);
     this.linesCleared = 0;
-    this.timeRemaining = level.timeLimit;
-    this.dropInterval = Math.max(400, 900 - levelId * 40);
+    this.linesRequired = getEffectiveLinesRequired(level, totalClears);
+    this.timeRemaining = Math.floor(level.timeLimit * mods.timeMultiplier);
+    this.dropInterval = Math.max(300, 900 - levelId * 40 - mods.dropSpeedBonus);
+    this.maxInputsPerFall = Math.max(5, 8 - mods.inputPenalty);
     this.dropTimer = 0;
     this.isProcessing = false;
     this.isPaused = false;
@@ -936,10 +1187,16 @@ class FormationGeneral {
     }
     this.selectedCharacter = null;
     this.characterUsed = false;
+    this.dropSlowUntil = 0;
+    this.dropSlowMultiplier = 1;
+    this.supplyBonusClearsRemaining = 0;
+    this.supplyBonusPerClear = 0;
     this.exitBlacksmithMode();
     this.exitBuildingPlacement();
     this.taskManager.reset();
     this.taskManager.fillTasks(2);
+    this.buildCharacterSelect();
+    this.buildShop();
     this.spawnFormation();
     this.updateCoinsDisplay();
 
@@ -1113,13 +1370,17 @@ class FormationGeneral {
       this.buildings = shiftBuildingsAfterClear(this.buildings, rows);
       this.remapBuildingProductionTimers(oldBuildings, oldTimers);
       this.linesCleared += rows.length;
+      if (this.supplyBonusClearsRemaining > 0 && this.supplyBonusPerClear > 0) {
+        this.addWood(this.supplyBonusPerClear);
+        this.supplyBonusClearsRemaining--;
+      }
       this.addCoins(rows.length * COINS_PER_LINE);
 
       const level = LEVELS[this.currentLevel - 1];
       document.getElementById('lines-display').textContent =
-        `${this.linesCleared} / ${level.linesRequired}`;
+        `${this.linesCleared} / ${this.linesRequired}`;
 
-      if (this.linesCleared >= level.linesRequired) {
+      if (this.linesCleared >= this.linesRequired) {
         this.levelComplete();
         return;
       }
@@ -1182,6 +1443,7 @@ class FormationGeneral {
     if (this.currentLevel === LEVELS.length) {
       msg.textContent = `Congratulations, General! You unified the realm! Cleared ${totalClears} times.`;
       this.updateMenuDisplay();
+      this.buildDispatchHall();
       nextBtn.style.display = 'none';
     } else {
       msg.textContent = `Level ${this.currentLevel} "${level.name}" complete! Cleared ${this.linesCleared} lines.`;
@@ -1369,7 +1631,8 @@ class FormationGeneral {
         this.currentRow,
         this.currentCol
       ));
-      const interval = baseInterval * terrainMult;
+      const interval = baseInterval * terrainMult *
+        (this.dropSlowUntil > now ? this.dropSlowMultiplier : 1);
 
       if (this.dropTimer >= interval) {
         this.dropTimer = 0;
@@ -1439,7 +1702,7 @@ class FormationGeneral {
     const el = document.getElementById('terrain-hint');
     if (!el) return;
 
-    const info = getTerrainHint(this.currentLevel);
+    const info = getTerrainHint(this.currentLevel, loadTotalClears());
     if (!info) {
       el.classList.add('hidden');
       el.textContent = '';

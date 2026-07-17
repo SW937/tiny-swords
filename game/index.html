@@ -17,6 +17,11 @@
         <div class="menu-stats">
           <span id="clear-count-display">Cleared 0 times</span>
         </div>
+        <button class="btn-dispatch" id="btn-dispatch" type="button">
+          <span class="btn-dispatch-icon">⚔</span>
+          <span class="btn-dispatch-text">Dispatch Hall</span>
+          <span class="btn-dispatch-sub">Choose Your Generals</span>
+        </button>
         <div class="level-grid" id="level-grid"></div>
         <div class="menu-hint">
           <p>← → Move · ↑ Rotate · 8 Keys/Fall · Charge · Orders · Morale · Shop · Buildings</p>
@@ -31,6 +36,7 @@
           <div class="hud-item">
             <span class="hud-label">Level</span>
             <span class="hud-value" id="level-display">1</span>
+            <span class="difficulty-badge hidden" id="difficulty-display"></span>
           </div>
           <div class="hud-item">
             <span class="hud-label">Lines</span>
@@ -227,6 +233,17 @@
           <button class="btn-primary" id="btn-retry">Try Again</button>
           <button class="btn-secondary" id="btn-to-menu-lose">Main Menu</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Dispatch Hall -->
+    <div id="dispatch-modal" class="modal hidden">
+      <div class="modal-content dispatch">
+        <h2>Dispatch Hall</h2>
+        <p class="dispatch-subtitle">Unlock stronger generals by clearing levels · Choose your roster</p>
+        <p class="dispatch-clears" id="dispatch-clears-display">Total clears: 0</p>
+        <div id="dispatch-slots" class="dispatch-slots"></div>
+        <button class="btn-secondary" id="btn-close-dispatch">Back</button>
       </div>
     </div>
   </div>
